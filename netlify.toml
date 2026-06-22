@@ -5,7 +5,7 @@
 
 [functions]
   node_bundler = "nft"
-  included_files = ["backend/**"]
+  included_files = ["backend/**", "node_modules/sqlite3/**"]
 
 [[redirects]]
   from = "/api/*"
