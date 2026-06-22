@@ -12,7 +12,7 @@ const bookingRoutes = require('./routes/bookings');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const uploadsDir = process.env.VERCEL
+const uploadsDir = process.env.VERCEL || process.env.NETLIFY
   ? '/tmp/uploads'
   : path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -58,8 +58,8 @@ async function syncDb() {
   return syncPromise;
 }
 
-// Auto-start only if not imported by Vercel
-if (require.main === module) {
+// Auto-start only if not imported by Vercel/Netlify
+if (require.main === module && !process.env.NETLIFY) {
   syncDb().then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);

@@ -13,3 +13,5 @@ frontend/ios/.symlinks/
 .pub-cache/
 .dart_tool/
 .vercel/
+.netlify/
+dist/
