@@ -1,7 +1,11 @@
 [build]
-  command = "CI=1 npm install"
+  command = "npm install"
   functions = "netlify/functions"
   publish = "."
+
+[functions]
+  node_bundler = "nft"
+  included_files = ["backend/**"]
 
 [[redirects]]
   from = "/api/*"
