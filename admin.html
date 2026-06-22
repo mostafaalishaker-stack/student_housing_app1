@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سكنكم - لوحة التحكم</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="/toast-utils.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; color: #333; }
+        .topbar { background: linear-gradient(135deg, #1565C0, #0D47A1); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .topbar h1 { font-size: 22px; cursor: pointer; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .back-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 14px; text-decoration: none; }
+        .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        table { width: 100%; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        th { background: #1565C0; color: white; padding: 12px 16px; text-align: right; font-weight: 600; }
+        td { padding: 12px 16px; border-bottom: 1px solid #eee; }
+        tr:hover { background: #f5f8ff; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 13px; }
+        .btn-primary { background: #1565C0; color: white; }
+        .btn-danger { background: #d32f2f; color: white; }
+        .btn-success { background: #2e7d32; color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; border-radius: 16px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 24px; }
+        .modal-content h2 { margin-bottom: 16px; }
+        .modal-content input, .modal-content textarea, .modal-content select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; font-family: 'Cairo', sans-serif; font-size: 14px; }
+        .modal-content label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; }
+        .modal-content .row { display: flex; gap: 10px; }
+        .modal-content .row > * { flex: 1; }
+        .loading { text-align: center; padding: 60px; color: #666; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+        .badge.green { background: #e8f5e9; color: #2e7d32; }
+        .badge.red { background: #ffebee; color: #d32f2f; }
+        .empty { text-align: center; padding: 40px; color: #888; }
+        .error-box { text-align: center; padding: 60px; color: #d32f2f; }
+        .error-box a { color: #1565C0; }
+        .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+        .tab { padding: 10px 24px; border-radius: 8px 8px 0 0; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 600; border: none; background: #e0e0e0; color: #555; }
+        .tab.active { background: white; color: #1565C0; box-shadow: 0 -2px 4px rgba(0,0,0,0.05); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-pending { background: #fff3e0; color: #e65100; }
+        .status-confirmed { background: #e8f5e9; color: #2e7d32; }
+        .status-cancelled { background: #f5f5f5; color: #888; }
+        .status-rejected { background: #ffebee; color: #d32f2f; }
+        .booking-snippet { font-size: 12px; color: #888; margin-top: 2px; }
+
+        .toast-container { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; }
+        .toast-wrap { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .toast { padding: 12px 24px; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: all 0.3s; pointer-events: auto; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .toast-error { background: #ffebee; color: #d32f2f; border: 1px solid #ef9a9a; }
+        .toast-info { background: #e3f2fd; color: #1565C0; border: 1px solid #90caf9; }
+    </style>
+</head>
+<body>
+    <script src="/sidebar.js"></script>
+    <div class="topbar">
+        <div style="display:flex;align-items:center;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <h1 onclick="location.href='/dashboard.html'">سكنكم</h1>
+            <span style="font-size:13px;opacity:0.8;margin-right:8px;">لوحة التحكم</span>
+        </div>
+        <a href="/dashboard.html" class="back-btn">← العودة</a>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('apartments', this)">🏢 الشقق</button>
+            <button class="tab" onclick="switchTab('bookings', this)">📋 الحجوزات</button>
+        </div>
+
+        <div id="tabApartments" class="tab-content active">
+            <div class="header-actions">
+                <h2>🏢 إدارة الشقق</h2>
+                <button class="btn btn-success" onclick="showAddForm()">+ إضافة شقة</button>
+            </div>
+            <div id="apartmentsTable"><div class="loading">جاري التحميل...</div></div>
+        </div>
+
+        <div id="tabBookings" class="tab-content">
+            <div class="header-actions">
+                <h2>📋 الحجوزات</h2>
+            </div>
+            <div id="bookingsTable"><div class="loading">جاري التحميل...</div></div>
+        </div>
+    </div>
+
+    <div id="formModal" class="modal">
+        <div class="modal-content">
+            <h2 id="formTitle">إضافة شقة</h2>
+            <form id="apartmentForm" onsubmit="saveApartment(event)">
+                <input type="hidden" id="editId">
+                <div class="row">
+                    <div>
+                        <label>العنوان</label>
+                        <input type="text" id="title" required>
+                    </div>
+                    <div>
+                        <label>الحي</label>
+                        <input type="text" id="district" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div>
+                        <label>الموقع</label>
+                        <input type="text" id="location" required>
+                    </div>
+                    <div>
+                        <label>السعر (ج.م)</label>
+                        <input type="number" id="price" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div>
+                        <label>حمامات</label>
+                        <input type="number" id="bathrooms" value="1">
+                    </div>
+                    <div>
+                        <label>المساحة (م²)</label>
+                        <input type="number" id="area">
+                    </div>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>تكوين الغرف (عدد الأسرة لكل غرفة)</label>
+                    <div id="roomConfigContainer">
+                        <div class="room-config-row" style="display:flex;gap:8px;margin-bottom:6px;">
+                            <input type="number" class="room-bed-input" min="1" max="6" value="2" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-family:'Cairo',sans-serif;font-size:14px;">
+                            <button type="button" class="btn btn-danger btn-sm" onclick="removeRoom(this)" style="display:none;">✕</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="addRoom()" style="margin-top:4px;">+ أضف غرفة</button>
+                    <span style="font-size:13px;color:#666;margin-right:8px;" id="roomSummary">إجمالي: 1 غرف، 2 أسرة</span>
+                </div>
+                <div class="row">
+                    <div>
+                        <label>سعر الغرفة</label>
+                        <input type="number" id="pricePerRoom">
+                    </div>
+                    <div>
+                        <label>سعر السرير</label>
+                        <input type="number" id="pricePerBed">
+                    </div>
+                    <div style="display:none;">
+                        <label>عدد الغرف</label>
+                        <input type="number" id="totalRooms" value="1">
+                    </div>
+                    <div style="display:none;">
+                        <label>عدد الأسرة</label>
+                        <input type="number" id="totalBeds" value="1">
+                    </div>
+                </div>
+                <div class="row">
+                    <div>
+                        <label>الجنس</label>
+                        <select id="gender">
+                            <option value="any">الجميع</option>
+                            <option value="male">طلاب</option>
+                            <option value="female">طالبات</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>مفروش</label>
+                        <select id="furnished">
+                            <option value="true">نعم</option>
+                            <option value="false">لا</option>
+                        </select>
+                    </div>
+                </div>
+                <label>الوصف</label>
+                <textarea id="description" rows="3"></textarea>
+                <label>الخدمات (مفصولة بفاصلة)</label>
+                <input type="text" id="amenities" placeholder="WiFi, تكييف, مطبخ...">
+                <div style="display:flex;gap:12px;margin-top:16px;">
+                    <button type="submit" class="btn btn-primary" style="flex:1;font-size:16px;padding:12px;">حفظ</button>
+                    <button type="button" class="btn" style="background:#eee;flex:1;font-size:16px;padding:12px;" onclick="closeForm()">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://localhost:3000/api'
+          : '/api';
+        const token = localStorage.getItem('token');
+
+        async function api(path, opts = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const res = await fetch(`${API}${path}`, { ...opts, headers });
+            return res.json();
+        }
+
+        function switchTab(name, btn) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+            if (name === 'bookings') loadBookings();
+        }
+
+        async function checkAuth() {
+            const el = document.getElementById('apartmentsTable');
+            if (!token) {
+                document.querySelectorAll('.tab-content').forEach(c => c.innerHTML = '<div class="error-box">❌ يجب تسجيل الدخول أولاً<br><a href="/dashboard.html">العودة للرئيسية</a></div>');
+                return false;
+            }
+            const data = await api('/auth/me');
+            if (!data.user) {
+                document.querySelectorAll('.tab-content').forEach(c => c.innerHTML = '<div class="error-box">❌ الجلسة منتهية أو غير صالحة<br><a href="/dashboard.html">تسجيل الدخول مجدداً</a></div>');
+                return false;
+            }
+            if (data.user.role !== 'admin') {
+                document.querySelectorAll('.tab-content').forEach(c => c.innerHTML = '<div class="error-box">⛔ هذه الصفحة مخصصة للمشرفين فقط<br><a href="/dashboard.html">العودة للرئيسية</a></div>');
+                return false;
+            }
+            return true;
+        }
+
+        async function loadBookings() {
+            const el = document.getElementById('bookingsTable');
+            const ok = await checkAuth();
+            if (!ok) return;
+            const data = await api('/bookings');
+            const bs = data.bookings || [];
+            if (bs.length === 0) {
+                el.innerHTML = '<div class="empty">لا توجد حجوزات بعد</div>';
+                return;
+            }
+            el.innerHTML = `
+                <table>
+                    <thead><tr>
+                        <th>الطالب</th>
+                        <th>الشقة</th>
+                        <th>نوع الحجز</th>
+                        <th>التفاصيل</th>
+                        <th>الحالة</th>
+                        <th>تحكم</th>
+                    </tr></thead>
+                    <tbody>${bs.map(b => {
+                        const apt = b.Apartment || {};
+                        const typeTxt = { entire:'كاملة', room:'غرفة', bed:'سرير', viewing:'معاينة' }[b.type] || b.type;
+                        const detail = b.type === 'room' ? (b.message || '') : b.type === 'bed' ? (b.bedCount + ' سرير') : '';
+                        return `
+                        <tr>
+                            <td>
+                                <strong>${b.requesterName || '-'}</strong><br>
+                                <span style="font-size:12px;color:#888;">📱 ${b.whatsapp || '-'}</span>
+                            </td>
+                            <td>${apt.title || '-'}<br><span style="font-size:12px;color:#888;">${apt.district || ''}</span></td>
+                            <td>${typeTxt}</td>
+                            <td>
+                                ${detail}
+                                <div class="booking-snippet">📅 ${new Date(b.createdAt).toLocaleDateString('ar-EG')}</div>
+                            </td>
+                            <td><span class="status-badge status-${b.status}">${ {pending:'قيد الانتظار', confirmed:'مؤكد', cancelled:'ملغي', rejected:'مرفوض'}[b.status] || b.status }</span></td>
+                            <td>
+                                ${b.status === 'pending' ? `
+                                    <button class="btn btn-success btn-sm" onclick="updateBookingStatus('${b.id}','confirmed')">✔ قبول</button>
+                                    <button class="btn btn-danger btn-sm" onclick="updateBookingStatus('${b.id}','rejected')">✕ رفض</button>
+                                ` : ''}
+                                <button class="btn btn-primary btn-sm" onclick="location.href='/apartment.html?id=${apt.id}'">عرض</button>
+                            </td>
+                        </tr>`;
+                    }).join('')}</tbody>
+                </table>
+            `;
+        }
+
+        async function updateBookingStatus(id, status) {
+            const data = await api(`/bookings/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+            if (data.booking) {
+                showToast('✅ تم تحديث الحالة', 'success');
+                loadBookings();
+            } else {
+                showToast('❌ ' + (data.message || 'فشل التحديث'), 'error');
+            }
+        }
+
+        async function loadApartments() {
+            const el = document.getElementById('apartmentsTable');
+            const ok = await checkAuth();
+            if (!ok) return;
+            const data = await api('/apartments');
+            const apts = data.apartments || [];
+            if (apts.length === 0) {
+                el.innerHTML = '<div class="empty">لا توجد شقق</div>';
+                return;
+            }
+            el.innerHTML = `
+                <table>
+                    <thead><tr>
+                        <th>العنوان</th>
+                        <th>الحي</th>
+                        <th>السعر</th>
+                        <th>الغرف</th>
+                        <th>الحالة</th>
+                        <th>تحكم</th>
+                    </tr></thead>
+                    <tbody>${apts.map(a => `
+                        <tr>
+                            <td>${a.title}</td>
+                            <td>${a.district}</td>
+                            <td>${Number(a.price).toLocaleString()} ج.م</td>
+                            <td>${a.totalRooms} غرف / ${a.totalBeds} أسرة</td>
+                            <td><span class="badge ${a.available ? 'green' : 'red'}">${a.available ? 'متاحة' : 'محجوزة'}</span></td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="editApartment('${a.id}')">✏️ تعديل</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteApartment('${a.id}')">🗑 حذف</button>
+                            </td>
+                        </tr>
+                    `).join('')}</tbody>
+                </table>
+            `;
+        }
+
+        function getRoomConfig() {
+            const inputs = document.querySelectorAll('.room-bed-input');
+            return Array.from(inputs).map(i => parseInt(i.value) || 1);
+        }
+        function updateRoomSummary() {
+            const config = getRoomConfig();
+            const total = config.reduce((a,b) => a+b, 0);
+            document.getElementById('roomSummary').textContent = `إجمالي: ${config.length} غرف، ${total} أسرة`;
+            document.getElementById('totalRooms').value = config.length;
+            document.getElementById('totalBeds').value = total;
+        }
+        function addRoom(beds) {
+            const container = document.getElementById('roomConfigContainer');
+            const row = document.createElement('div');
+            row.className = 'room-config-row';
+            row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;';
+            row.innerHTML = `
+                <input type="number" class="room-bed-input" min="1" max="6" value="${beds || 1}" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-family:'Cairo',sans-serif;font-size:14px;" oninput="updateRoomSummary()">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeRoom(this)">✕</button>
+            `;
+            container.appendChild(row);
+            updateRoomSummary();
+        }
+        function removeRoom(btn) {
+            const rows = document.querySelectorAll('.room-config-row');
+            if (rows.length <= 1) return;
+            btn.closest('.room-config-row').remove();
+            updateRoomSummary();
+        }
+        function resetRoomConfig() {
+            const container = document.getElementById('roomConfigContainer');
+            container.innerHTML = `
+                <div class="room-config-row" style="display:flex;gap:8px;margin-bottom:6px;">
+                    <input type="number" class="room-bed-input" min="1" max="6" value="2" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-family:'Cairo',sans-serif;font-size:14px;" oninput="updateRoomSummary()">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeRoom(this)" style="display:none;">✕</button>
+                </div>
+            `;
+            updateRoomSummary();
+        }
+
+        function showAddForm() {
+            document.getElementById('formTitle').textContent = 'إضافة شقة جديدة';
+            document.getElementById('apartmentForm').reset();
+            document.getElementById('editId').value = '';
+            resetRoomConfig();
+            document.getElementById('formModal').classList.add('show');
+        }
+
+        async function editApartment(id) {
+            const data = await api(`/apartments/${id}`);
+            const a = data.apartment;
+            if (!a) { showToast('❌ لم يتم العثور على الشقة', 'error'); return; }
+            document.getElementById('formTitle').textContent = 'تعديل الشقة';
+            document.getElementById('editId').value = a.id;
+            document.getElementById('title').value = a.title;
+            document.getElementById('district').value = a.district;
+            document.getElementById('location').value = a.location;
+            document.getElementById('price').value = a.price;
+            document.getElementById('bathrooms').value = a.bathrooms;
+            document.getElementById('area').value = a.area || '';
+            const rc = a.roomConfig || [a.totalRooms > 0 ? Math.ceil(a.totalBeds / a.totalRooms) : 1];
+            resetRoomConfig();
+            const container = document.getElementById('roomConfigContainer');
+            container.innerHTML = '';
+            rc.forEach((beds, idx) => {
+                const row = document.createElement('div');
+                row.className = 'room-config-row';
+                row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;';
+                row.innerHTML = `
+                    <input type="number" class="room-bed-input" min="1" max="6" value="${beds}" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-family:'Cairo',sans-serif;font-size:14px;" oninput="updateRoomSummary()">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeRoom(this)">✕</button>
+                `;
+                container.appendChild(row);
+            });
+            updateRoomSummary();
+            document.getElementById('pricePerRoom').value = a.pricePerRoom || '';
+            document.getElementById('pricePerBed').value = a.pricePerBed || '';
+            document.getElementById('gender').value = a.gender;
+            document.getElementById('furnished').value = a.furnished ? 'true' : 'false';
+            document.getElementById('description').value = a.description || '';
+            document.getElementById('amenities').value = (a.amenities || []).join(', ');
+            document.getElementById('formModal').classList.add('show');
+        }
+
+        async function saveApartment(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const roomConfig = getRoomConfig();
+            const totalRooms = roomConfig.length;
+            const totalBeds = roomConfig.reduce((a,b) => a+b, 0);
+            const data = {
+                title: document.getElementById('title').value,
+                district: document.getElementById('district').value,
+                location: document.getElementById('location').value,
+                price: parseFloat(document.getElementById('price').value),
+                bathrooms: parseInt(document.getElementById('bathrooms').value),
+                area: parseFloat(document.getElementById('area').value) || null,
+                totalRooms,
+                totalBeds,
+                availableRooms: totalRooms,
+                availableBeds: totalBeds,
+                pricePerRoom: parseFloat(document.getElementById('pricePerRoom').value) || null,
+                pricePerBed: parseFloat(document.getElementById('pricePerBed').value) || null,
+                gender: document.getElementById('gender').value,
+                furnished: document.getElementById('furnished').value === 'true',
+                description: document.getElementById('description').value,
+                amenities: document.getElementById('amenities').value.split(',').map(s => s.trim()).filter(Boolean),
+                roomConfig,
+                available: true,
+            };
+            const url = id ? `/apartments/${id}` : '/apartments';
+            const method = id ? 'PUT' : 'POST';
+            const res = await api(url, { method, body: JSON.stringify(data) });
+            if (res.apartment) {
+                closeForm();
+        initSidebar();
+        loadApartments();
+                showToast('✅ تم حفظ الشقة بنجاح', 'success');
+            } else {
+                showToast('❌ ' + (res.message || 'فشل الحفظ'), 'error');
+            }
+        }
+
+        async function deleteApartment(id) {
+            if (!confirm('هل أنت متأكد من حذف هذه الشقة؟')) return;
+            await api(`/apartments/${id}`, { method: 'DELETE' });
+            loadApartments();
+            showToast('🗑 تم حذف الشقة', 'info');
+        }
+
+        function closeForm() {
+            document.getElementById('formModal').classList.remove('show');
+        }
+        document.getElementById('formModal').addEventListener('click', function(e) {
+            if (e.target === this) closeForm();
+        });
+
+        loadApartments();
+    </script>
+</body>
+</html>

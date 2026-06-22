@@ -1,0 +1,15 @@
+node_modules/
+*.sqlite
+uploads/*
+!uploads/.gitkeep
+.env
+backend/.env
+frontend/build/
+frontend/android/.gradle/
+frontend/android/key.properties
+frontend/android/upload-keystore.jks
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+.pub-cache/
+.dart_tool/
+.vercel/

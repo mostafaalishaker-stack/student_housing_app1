@@ -1,0 +1,10 @@
+{
+  "name": "سكنكم",
+  "short_name": "سكنكم",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1565C0",
+  "theme_color": "#1565C0",
+  "dir": "rtl",
+  "lang": "ar"
+}

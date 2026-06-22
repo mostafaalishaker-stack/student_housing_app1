@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سكنكم - حجوزاتي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="/toast-utils.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; color: #333; }
+        .topbar { background: linear-gradient(135deg, #1565C0, #0D47A1); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .topbar h1 { font-size: 22px; cursor: pointer; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .back-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 14px; text-decoration: none; }
+        .loading { text-align: center; padding: 60px; color: #666; }
+        .empty { text-align: center; padding: 60px; color: #888; }
+
+        .booking-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 16px; display: flex; gap: 16px; align-items: center; }
+        .booking-card .icon-box { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+        .booking-card .info { flex: 1; min-width: 0; }
+        .booking-card .info h3 { font-size: 16px; margin-bottom: 4px; }
+        .booking-card .info .meta { font-size: 13px; color: #666; display: flex; flex-wrap: wrap; gap: 8px; }
+        .booking-card .info .meta span { white-space: nowrap; }
+        .booking-card .actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 13px; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #1565C0; color: white; }
+        .btn-danger { background: #d32f2f; color: white; }
+        .btn-outline { background: transparent; border: 1px solid #ddd; color: #555; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+        .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-pending { background: #fff3e0; color: #e65100; }
+        .status-confirmed { background: #e8f5e9; color: #2e7d32; }
+        .status-cancelled { background: #f5f5f5; color: #888; }
+        .status-rejected { background: #ffebee; color: #d32f2f; }
+
+        .toast-container { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; }
+        .toast-wrap { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .toast { padding: 12px 24px; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: all 0.3s; pointer-events: auto; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .toast-error { background: #ffebee; color: #d32f2f; border: 1px solid #ef9a9a; }
+        .toast-info { background: #e3f2fd; color: #1565C0; border: 1px solid #90caf9; }
+
+        @media (max-width: 600px) {
+            .booking-card { flex-direction: column; text-align: center; }
+            .booking-card .actions { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <script src="/sidebar.js"></script>
+    <div class="topbar">
+        <div style="display:flex;align-items:center;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <h1 onclick="location.href='/dashboard.html'" style="cursor:pointer;">سكنكم</h1>
+            <span style="font-size:13px;opacity:0.8;margin-right:8px;">حجوزاتي</span>
+        </div>
+        <a href="/dashboard.html" class="back-btn">← العودة</a>
+    </div>
+    <div class="container">
+        <h2 style="margin-bottom:16px;">📋 حجوزاتي</h2>
+        <div id="bookingsList"><div class="loading">جاري تحميل الحجوزات...</div></div>
+    </div>
+
+    <script>
+        const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://localhost:3000/api'
+          : '/api';
+        const token = localStorage.getItem('token');
+
+        async function api(path, opts = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const res = await fetch(`${API}${path}`, { ...opts, headers });
+            return res.json();
+        }
+
+        function typeLabel(t) { return { entire:'الشقة كاملة', room:'غرفة', bed:'سرير', viewing:'معاينة' }[t] || t; }
+        function typeIcon(t) { return { entire:'🏠', room:'🚪', bed:'🛏️', viewing:'👁️' }[t] || '📋'; }
+        function statusLabel(s) { return { pending:'قيد الانتظار', confirmed:'مؤكد', cancelled:'ملغي', rejected:'مرفوض' }[s] || s; }
+
+        async function cancelBooking(id) {
+            if (!confirm('هل أنت متأكد من إلغاء هذا الحجز؟')) return;
+            const data = await api(`/bookings/${id}/status`, { method: 'PUT', body: JSON.stringify({ status: 'cancelled' }) });
+            if (data.booking) {
+                showToast('✅ تم إلغاء الحجز', 'success');
+        initSidebar();
+        loadBookings();
+            } else {
+                showToast('❌ ' + (data.message || 'فشل الإلغاء'), 'error');
+            }
+        }
+
+        async function loadBookings() {
+            if (!token) {
+                document.getElementById('bookingsList').innerHTML = '<div class="empty">❌ يجب تسجيل الدخول أولاً<br><br><a href="/dashboard.html" style="color:#1565C0;">تسجيل الدخول</a></div>';
+                return;
+            }
+            const data = await api('/bookings/my');
+            const list = document.getElementById('bookingsList');
+            const bs = data.bookings || [];
+            if (bs.length === 0) {
+                list.innerHTML = '<div class="empty">📭 لا توجد حجوزات<br><br><a href="/dashboard.html" class="btn btn-primary">تصفح الشقق</a></div>';
+                return;
+            }
+            list.innerHTML = bs.map(b => {
+                const canCancel = b.status === 'pending';
+                const apt = b.Apartment || {};
+                return `
+                <div class="booking-card">
+                    <div class="icon-box" style="background:${b.status === 'confirmed' ? '#e8f5e9' : b.status === 'cancelled' || b.status === 'rejected' ? '#f5f5f5' : '#fff3e0'}">
+                        ${typeIcon(b.type)}
+                    </div>
+                    <div class="info">
+                        <h3>${apt.title || 'شقة'}</h3>
+                        <div class="meta">
+                            <span>${typeIcon(b.type)} ${typeLabel(b.type)}</span>
+                            ${b.type === 'room' && b.message ? '<span>🚪 ' + b.message + '</span>' : ''}
+                            ${b.type === 'bed' && b.bedCount ? '<span>🛏️ ' + b.bedCount + ' سرير</span>' : ''}
+                            <span>📍 ${apt.district || ''}</span>
+                            <span>📅 ${new Date(b.createdAt).toLocaleDateString('ar-EG')}</span>
+                            <span><span class="status-badge status-${b.status}">${statusLabel(b.status)}</span></span>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        ${canCancel ? '<button class="btn btn-danger btn-sm" onclick="cancelBooking(\'' + b.id + '\')">إلغاء</button>' : ''}
+                        ${apt.id ? '<a href="/apartment.html?id=' + apt.id + '" class="btn btn-outline btn-sm">عرض</a>' : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        loadBookings();
+    </script>
+</body>
+</html>

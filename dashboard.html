@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سكنكم</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="/toast-utils.js"></script>
+    <script src="/sidebar.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; color: #333; }
+        .topbar { background: linear-gradient(135deg, #1565C0, #0D47A1); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .topbar h1 { font-size: 22px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .filters select, .filters input { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 14px; }
+        .search-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .search-row input { padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 14px; flex: 1; min-width: 150px; }
+        .search-row button { padding: 10px 24px; background: #1565C0; color: white; border: none; border-radius: 8px; cursor: pointer; font-family: 'Cairo', sans-serif; font-weight: 600; }
+        .search-row button:hover { background: #0D47A1; }
+        .apartment-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.1); transition: transform 0.2s; cursor: pointer; position: relative; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .card-img { height: 180px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 40px; overflow: hidden; }
+        .card-img img { width: 100%; height: 100%; object-fit: cover; }
+        .card-body { padding: 16px; }
+        .card-body h3 { font-size: 16px; margin-bottom: 6px; }
+        .card-body .location { font-size: 13px; color: #666; margin-bottom: 8px; }
+        .card-body .details { display: flex; gap: 12px; font-size: 13px; color: #555; margin-bottom: 8px; }
+        .card-body .price { font-size: 20px; font-weight: 700; color: #1565C0; }
+        .card-body .price span { font-size: 13px; color: #666; font-weight: 400; }
+        .card-body .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        .card-body .quick-actions { display: flex; gap: 6px; margin-top: 10px; }
+        .card-body .quick-actions .btn { flex: 1; text-align: center; }
+        .tag { background: #e3f2fd; color: #1565C0; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+        .tag.green { background: #e8f5e9; color: #2e7d32; }
+        .tag.orange { background: #fff3e0; color: #e65100; }
+        .login-form { max-width: 400px; margin: 60px auto; background: white; padding: 32px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        .login-form h2 { text-align: center; margin-bottom: 24px; }
+        .login-form .error { color: #d32f2f; font-size: 13px; margin-bottom: 8px; display: none; background: #ffebee; padding: 8px 12px; border-radius: 6px; }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal.show { display: flex; }
+        .loading { text-align: center; padding: 60px; color: #666; }
+
+        .toast-container { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; }
+        .toast-wrap { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .toast { padding: 12px 24px; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: all 0.3s; pointer-events: auto; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .toast-error { background: #ffebee; color: #d32f2f; border: 1px solid #ef9a9a; }
+        .toast-info { background: #e3f2fd; color: #1565C0; border: 1px solid #90caf9; }
+
+        @media (max-width: 600px) {
+            .apartment-grid { grid-template-columns: 1fr; }
+            .topbar h1 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div>
+            <h1>سكنكم</h1>
+        </div>
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <div id="authInfo" style="display:flex;align-items:center;gap:8px;">
+            <div class="loading" style="padding:0;font-size:13px;">...</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="search-row">
+            <input type="text" style="display:none;" aria-hidden="true">
+            <input type="password" style="display:none;" aria-hidden="true">
+            <input type="search" id="searchInput" placeholder="ابحث عن شقة..." oninput="loadApartments()">
+            <button onclick="loadApartments()">🔍 بحث</button>
+            <button onclick="loadApartments(true)" style="background:rgba(255,255,255,0.2);border:1px solid #ddd;border-radius:8px;padding:10px 14px;cursor:pointer;font-size:16px;" title="تحديث">🔄</button>
+        </div>
+        <div class="filters">
+            <select id="sortBy" onchange="loadApartments()">
+                <option value="">ترتيب: الأحدث</option>
+                <option value="price_asc">السعر: الأقل أولاً</option>
+                <option value="price_desc">السعر: الأعلى أولاً</option>
+                <option value="rooms_asc">الغرف: الأقل أولاً</option>
+                <option value="beds_asc">الأسرة: الأقل أولاً</option>
+            </select>
+            <select id="filterGender" onchange="loadApartments()">
+                <option value="">كل الجنسين</option>
+                <option value="any">للجميع</option>
+                <option value="male">طلاب</option>
+                <option value="female">طالبات</option>
+            </select>
+            <select id="filterFurnished" onchange="loadApartments()">
+                <option value="">كل الشقق</option>
+                <option value="true">مفروش</option>
+                <option value="false">غير مفروش</option>
+            </select>
+            <select id="filterBookingType" onchange="loadApartments()">
+                <option value="">كل أنواع الحجز</option>
+                <option value="room">حجز غرفة</option>
+                <option value="bed">حجز سرير</option>
+            </select>
+        </div>
+        <div id="apartmentsGrid" class="apartment-grid">
+            <div class="loading">جاري تحميل الشقق...</div>
+        </div>
+    </div>
+
+    <div id="loginModal" class="modal">
+        <div id="loginFormView" class="login-form" style="text-align:center;">
+            <h2>تسجيل الدخول</h2>
+            <div id="loginError" class="error"></div>
+            <div style="margin-bottom:16px;">
+                <div id="g_id_signin"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin:16px 0;">
+                <hr style="flex:1;border:none;border-top:1px solid #ddd;">
+                <span style="color:#999;font-size:13px;">أو</span>
+                <hr style="flex:1;border:none;border-top:1px solid #ddd;">
+            </div>
+            <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;margin-bottom:8px;font-family:'Cairo',sans-serif;text-align:right;">
+            <input type="password" id="loginPassword" placeholder="كلمة المرور" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-family:'Cairo',sans-serif;text-align:right;">
+            <button onclick="handleEmailLogin()" style="width:100%;padding:10px;background:#1565C0;color:white;border:none;border-radius:8px;font-family:'Cairo',sans-serif;font-weight:600;font-size:15px;cursor:pointer;">دخول</button>
+            <p style="text-align:center;margin-top:12px;font-size:13px;color:#666;">
+                <a href="#" onclick="showRegister();return false;">ليس لديك حساب؟ إنشاء حساب</a>
+                &nbsp;|&nbsp;
+                <a href="#" onclick="closeLoginModal();return false;">إلغاء</a>
+            </p>
+        </div>
+        <div id="registerFormView" class="login-form" style="text-align:center;display:none;">
+            <h2>إنشاء حساب</h2>
+            <div id="registerError" class="error"></div>
+            <input type="text" id="regName" placeholder="الاسم" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;margin-bottom:8px;font-family:'Cairo',sans-serif;text-align:right;">
+            <input type="email" id="regEmail" placeholder="البريد الإلكتروني" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;margin-bottom:8px;font-family:'Cairo',sans-serif;text-align:right;">
+            <input type="password" id="regPassword" placeholder="كلمة المرور" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;margin-bottom:8px;font-family:'Cairo',sans-serif;text-align:right;">
+            <input type="text" id="regPhone" placeholder="رقم الهاتف (اختياري)" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;margin-bottom:8px;font-family:'Cairo',sans-serif;text-align:right;">
+            <input type="text" id="regUniversity" placeholder="الجامعة (اختياري)" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-family:'Cairo',sans-serif;text-align:right;">
+            <button onclick="handleRegister()" style="width:100%;padding:10px;background:#2e7d32;color:white;border:none;border-radius:8px;font-family:'Cairo',sans-serif;font-weight:600;font-size:15px;cursor:pointer;">إنشاء حساب</button>
+            <p style="text-align:center;margin-top:12px;font-size:13px;color:#666;">
+                <a href="#" onclick="showLoginForm();return false;">لديك حساب؟ تسجيل الدخول</a>
+                &nbsp;|&nbsp;
+                <a href="#" onclick="closeLoginModal();return false;">إلغاء</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('token') || null;
+        let googleRendered = false;
+        const GOOGLE_CLIENT_ID = '196449063436-0l9j1q6a7rrlb7gogoht91sc67epes30.apps.googleusercontent.com';
+        const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://localhost:3000/api'
+          : '/api';
+
+        async function api(path, opts = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const res = await fetch(`${API}${path}`, { ...opts, headers });
+            return res.json();
+        }
+
+        function updateAuthUI(user) {
+            document.getElementById('authInfo').innerHTML = user ? `
+                ${user.role === 'admin' ? `<a href="/admin.html" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:6px 12px;border-radius:6px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:13px;text-decoration:none;">🛠 الإدارة</a>` : ''}
+                <span style="font-size:14px;">👤 ${user.name}</span>
+                <button onclick="logout()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:6px 12px;border-radius:6px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:13px;">تسجيل خروج</button>
+            ` : `
+                <button onclick="showLogin()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:8px 16px;border-radius:8px;cursor:pointer;font-family:'Cairo',sans-serif;">تسجيل الدخول</button>
+            `;
+        }
+
+        async function restoreSession() {
+            if (!token) { updateAuthUI(null); return; }
+            const data = await api('/auth/me');
+            if (data.user) {
+                localStorage.setItem('userName', data.user.name);
+                localStorage.setItem('userRole', data.user.role);
+                updateAuthUI(data.user);
+                updateSidebarUser();
+            } else {
+                token = null;
+                localStorage.removeItem('token');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('userRole');
+                updateAuthUI(null);
+                updateSidebarUser();
+            }
+        }
+
+        async function handleGoogleCredential(response) {
+            const err = document.getElementById('loginError');
+            try {
+                const data = await api('/auth/google', {
+                    method: 'POST',
+                    body: JSON.stringify({ idToken: response.credential, clientId: GOOGLE_CLIENT_ID })
+                });
+                if (data.token) {
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userName', data.user.name);
+                    localStorage.setItem('userRole', data.user.role);
+                    closeLoginModal();
+                    updateAuthUI(data.user);
+                    updateSidebarUser();
+                } else {
+                    err.textContent = data.message || 'فشل تسجيل الدخول';
+                    err.style.display = 'block';
+                }
+            } catch (e) {
+                err.textContent = 'فشل الاتصال بالخادم';
+                err.style.display = 'block';
+            }
+        }
+
+        async function handleEmailLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+            const err = document.getElementById('loginError');
+            if (!email || !pass) {
+                err.textContent = 'يرجى إدخال البريد الإلكتروني وكلمة المرور';
+                err.style.display = 'block';
+                return;
+            }
+            try {
+                const data = await api('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password: pass })
+                });
+                if (data.token) {
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userName', data.user.name);
+                    localStorage.setItem('userRole', data.user.role);
+                    closeLoginModal();
+                    updateAuthUI(data.user);
+                    updateSidebarUser();
+                } else {
+                    err.textContent = data.message || 'خطأ في البريد أو كلمة المرور';
+                    err.style.display = 'block';
+                }
+            } catch (e) {
+                err.textContent = 'فشل الاتصال بالخادم';
+                err.style.display = 'block';
+            }
+        }
+
+        function showRegister() {
+            document.getElementById('loginFormView').style.display = 'none';
+            document.getElementById('registerFormView').style.display = 'block';
+            document.getElementById('registerError').style.display = 'none';
+        }
+        function showLoginForm() {
+            document.getElementById('registerFormView').style.display = 'none';
+            document.getElementById('loginFormView').style.display = 'block';
+            document.getElementById('loginError').style.display = 'none';
+        }
+        async function handleRegister() {
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const pass = document.getElementById('regPassword').value;
+            const phone = document.getElementById('regPhone').value;
+            const university = document.getElementById('regUniversity').value;
+            const err = document.getElementById('registerError');
+            if (!name || !email || !pass) {
+                err.textContent = 'يرجى إدخال الاسم والبريد الإلكتروني وكلمة المرور';
+                err.style.display = 'block';
+                return;
+            }
+            if (pass.length < 6) {
+                err.textContent = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+                err.style.display = 'block';
+                return;
+            }
+            try {
+                const data = await api('/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, email, password: pass, phone, university })
+                });
+                if (data.token) {
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userName', data.user.name);
+                    localStorage.setItem('userRole', data.user.role);
+                    closeLoginModal();
+                    updateAuthUI(data.user);
+                    updateSidebarUser();
+                } else {
+                    err.textContent = data.message || 'فشل إنشاء الحساب';
+                    err.style.display = 'block';
+                }
+            } catch (e) {
+                err.textContent = 'فشل الاتصال بالخادم';
+                err.style.display = 'block';
+            }
+        }
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.remove('show');
+            document.getElementById('loginError').style.display = 'none';
+            document.getElementById('registerError').style.display = 'none';
+            document.getElementById('loginFormView').style.display = 'block';
+            document.getElementById('registerFormView').style.display = 'none';
+        }
+
+        function shareAptWA(a) {
+            const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+              ? 'http://localhost:3000'
+              : window.location.origin;
+            const txt = encodeURIComponent(`🏠 ${a.title}\n📍 ${a.district} - ${a.location}\n💰 ${Number(a.price).toLocaleString()} ج.م/شهرياً\n🚪 ${a.totalRooms} غرفة · 🛏 ${a.totalBeds} سرير\n🔗 ${BASE}/apartment.html?id=${a.id}`);
+            window.open(`https://wa.me/?text=${txt}`, '_blank');
+        }
+
+        function quickPreview(a) {
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.style.cssText = 'cursor:pointer;';
+            modal.innerHTML = `
+                <div style="background:white;border-radius:16px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;cursor:default;" onclick="event.stopPropagation()">
+                    <div style="padding:20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:start;">
+                            <h2 style="font-size:18px;">${a.title}</h2>
+                            <button onclick="this.closest('.modal').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#888;">✕</button>
+                        </div>
+                        <div style="margin:12px 0;border-radius:10px;overflow:hidden;max-height:220px;">
+                            ${a.images && a.images[0] ? `<img src="${a.images[0]}" style="width:100%;height:220px;object-fit:cover;">` : '<div style="height:120px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:40px;">🏠</div>'}
+                        </div>
+                        <div class="location" style="font-size:14px;color:#666;">📍 ${a.district} - ${a.location}</div>
+                        <div style="font-size:22px;font-weight:700;color:#1565C0;margin:10px 0;">${Number(a.price).toLocaleString()} <span style="font-size:14px;color:#666;font-weight:400;">ج.م / شهرياً</span></div>
+                        <div style="display:flex;gap:16px;font-size:13px;color:#555;margin:8px 0;">
+                            <span>🚪 ${a.totalRooms} غرفة</span><span>🛏 ${a.totalBeds} سرير</span><span>🚿 ${a.bathrooms} حمام</span>
+                        </div>
+                        <div class="tags" style="margin:8px 0;">${a.furnished ? '<span class="tag green">مفروش</span>' : ''}${a.gender !== 'any' ? '<span class="tag orange">' + (a.gender === 'male' ? 'طلاب' : 'طالبات') + '</span>' : ''}${a.allowRoomBooking ? '<span class="tag">حجز غرفة</span>' : ''}${a.allowBedBooking ? '<span class="tag">حجز سرير</span>' : ''}</div>
+                        <div style="display:flex;gap:10px;margin-top:14px;">
+                            <a href="/apartment.html?id=${a.id}" class="btn" style="flex:1;text-align:center;background:#1565C0;color:white;padding:10px;border-radius:8px;text-decoration:none;font-weight:600;">عرض التفاصيل</a>
+                            <button onclick="shareAptWA(${JSON.stringify(a).replace(/"/g,'&quot;')})" style="flex:0 0 auto;background:#25D366;color:white;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:18px;" title="مشاركة عبر واتساب">📤</button>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', () => modal.remove());
+        }
+
+        let cachedApts = null;
+        let lastParams = '';
+
+        function getParams() {
+            return JSON.stringify({
+                q: document.getElementById('searchInput').value,
+                gender: document.getElementById('filterGender').value,
+                furnished: document.getElementById('filterFurnished').value,
+                bookingType: document.getElementById('filterBookingType').value,
+            });
+        }
+
+        function filterAndSortApts(apts) {
+            const q = document.getElementById('searchInput').value.trim().toLowerCase();
+            const gender = document.getElementById('filterGender').value;
+            const furnished = document.getElementById('filterFurnished').value;
+            const bookingType = document.getElementById('filterBookingType').value;
+            const sort = document.getElementById('sortBy').value;
+            let result = apts.filter(a => {
+                if (gender && a.gender !== gender) return false;
+                if (furnished && (furnished === 'true' ? !a.furnished : a.furnished)) return false;
+                if (bookingType === 'room' && !a.allowRoomBooking) return false;
+                if (bookingType === 'bed' && !a.allowBedBooking) return false;
+                if (q && !a.title.toLowerCase().includes(q) && !a.description.toLowerCase().includes(q) && !a.location.toLowerCase().includes(q)) return false;
+                return true;
+            });
+            if (sort === 'price_asc') result.sort((a,b) => a.price - b.price);
+            else if (sort === 'price_desc') result.sort((a,b) => b.price - a.price);
+            else if (sort === 'rooms_asc') result.sort((a,b) => a.totalRooms - b.totalRooms);
+            else if (sort === 'beds_asc') result.sort((a,b) => a.totalBeds - b.totalBeds);
+            return result;
+        }
+
+        function renderApts(apts) {
+            const grid = document.getElementById('apartmentsGrid');
+            if (apts.length === 0) {
+                grid.innerHTML = '<div class="loading" style="grid-column:1/-1;">لا توجد شقق متاحة</div>';
+                return;
+            }
+            grid.innerHTML = apts.map(a => `
+                <div class="card">
+                    <div onclick="location.href='/apartment.html?id=${a.id}'">
+                        <div class="card-img">
+                            ${a.images && a.images[0] ? `<img src="${a.images[0]}" alt="${a.title}">` : '🏠'}
+                        </div>
+                        <div class="card-body">
+                            <h3>${a.title}</h3>
+                            <div class="location">📍 ${a.district} - ${a.location}</div>
+                            <div class="details">
+                                <span>🛏 ${a.bedrooms} غرف</span>
+                                <span>🚿 ${a.bathrooms} حمامات</span>
+                                ${a.totalBeds ? `<span>🛌 ${a.totalBeds} سرير</span>` : ''}
+                            </div>
+                            <div class="price">${Number(a.price).toLocaleString()} <span>ج.م / شهرياً</span></div>
+                            <div style="font-size:12px;color:#666;margin:4px 0;">
+                                🚪 ${a.totalRooms} غرفة · 🛏 ${a.totalBeds} سرير
+                                ${a.allowRoomBooking ? `· غرفة: ${Number(a.pricePerRoom||0).toLocaleString()} ج.م` : ''}
+                                ${a.allowBedBooking ? `· سرير: ${Number(a.pricePerBed||0).toLocaleString()} ج.م` : ''}
+                            </div>
+                            <div class="tags">
+                                ${a.furnished ? '<span class="tag green">مفروش</span>' : ''}
+                                ${a.gender !== 'any' ? `<span class="tag orange">${a.gender === 'male' ? 'طلاب' : 'طالبات'}</span>` : ''}
+                            </div>
+                            <div class="quick-actions">
+                                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();quickPreview(${JSON.stringify(a).replace(/"/g,'&quot;')})">👁 معاينة</button>
+                                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();shareAptWA(${JSON.stringify(a).replace(/"/g,'&quot;')})">📤 مشاركة</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function readCache() {
+            try {
+                const raw = localStorage.getItem('aptsCache');
+                if (!raw) return null;
+                const c = JSON.parse(raw);
+                if (Date.now() - c.ts > 300000) { localStorage.removeItem('aptsCache'); return null; }
+                return c.data;
+            } catch { return null; }
+        }
+        function writeCache(data) {
+            try { localStorage.setItem('aptsCache', JSON.stringify({ ts: Date.now(), data })); } catch {}
+        }
+
+        async function loadApartments(forceRefresh) {
+            const params = getParams();
+            const grid = document.getElementById('apartmentsGrid');
+            if (forceRefresh || !cachedApts) {
+                cachedApts = readCache();
+            }
+            if (!cachedApts) {
+                grid.innerHTML = '<div class="loading">جاري التحميل...</div>';
+                const data = await api('/apartments');
+                cachedApts = data.apartments || [];
+                writeCache(cachedApts);
+                lastParams = params;
+            }
+            const filtered = filterAndSortApts(cachedApts);
+            renderApts(filtered);
+            if (filtered.length !== cachedApts.length) {
+                document.querySelector('.search-row .count')?.remove();
+                const c = document.createElement('span');
+                c.className = 'count';
+                c.style.cssText = 'font-size:13px;color:#666;margin-right:8px;';
+                c.textContent = `(${filtered.length} من ${cachedApts.length} شقة)`;
+                document.querySelector('.search-row').appendChild(c);
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('loginModal').classList.add('show');
+            document.getElementById('loginError').style.display = 'none';
+            if (!googleRendered) {
+                google.accounts.id.initialize({
+                    client_id: GOOGLE_CLIENT_ID,
+                    callback: handleGoogleCredential,
+                    auto_select: false,
+                    cancel_on_tap_outside: false,
+                });
+                google.accounts.id.renderButton(
+                    document.getElementById('g_id_signin'),
+                    { type: 'standard', shape: 'rectangular', text: 'signin_with', theme: 'outline', size: 'large', logo_alignment: 'center' }
+                );
+                googleRendered = true;
+            }
+        }
+
+        function logout() {
+            if (googleRendered) {
+                google.accounts.id.disableAutoSelect();
+            }
+            token = null;
+            localStorage.removeItem('token');
+            localStorage.removeItem('userName');
+            localStorage.removeItem('userRole');
+            updateAuthUI(null);
+        }
+
+        initSidebar();
+        restoreSession();
+        loadApartments();
+    </script>
+</body>
+</html>

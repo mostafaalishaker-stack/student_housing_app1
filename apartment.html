@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سكنكم - تفاصيل الشقة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="/toast-utils.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f0f2f5; color: #333; }
+        .topbar { background: linear-gradient(135deg, #1565C0, #0D47A1); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .topbar h1 { font-size: 22px; cursor: pointer; }
+        .topbar .sub { font-size: 13px; opacity: 0.8; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .back-btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 14px; text-decoration: none; }
+
+        .gallery { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 20px; border-radius: 12px; cursor: pointer; }
+        .gallery img { width: 100%; max-height: 400px; object-fit: cover; border-radius: 12px; flex-shrink: 0; }
+        .gallery .placeholder { width: 100%; height: 300px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 60px; }
+        .gallery-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); z-index:2000; display:none; align-items:center; justify-content:center; }
+        .gallery-overlay.show { display:flex; }
+        .gallery-overlay img { max-width:95%; max-height:90vh; border-radius:8px; }
+        .gallery-overlay .nav-btn { position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.2); color:white; border:none; font-size:36px; width:50px; height:50px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+        .gallery-overlay .nav-btn:hover { background:rgba(255,255,255,0.4); }
+        .gallery-overlay .close-btn { position:absolute; top:20px; left:20px; background:rgba(255,255,255,0.2); color:white; border:none; font-size:24px; width:44px; height:44px; border-radius:50%; cursor:pointer; }
+        .gallery-overlay .counter { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); color:white; font-size:14px; background:rgba(0,0,0,0.5); padding:6px 16px; border-radius:20px; }
+
+        .detail-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .detail-card h2 { font-size: 24px; margin-bottom: 8px; }
+        .detail-card .location { font-size: 15px; color: #666; margin-bottom: 12px; }
+        .specs { display: flex; gap: 20px; flex-wrap: wrap; padding: 16px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; margin: 12px 0; }
+        .spec-item { text-align: center; min-width: 80px; }
+        .spec-item .icon { font-size: 24px; }
+        .spec-item .value { font-size: 16px; font-weight: 600; margin: 4px 0; }
+        .spec-item .label { font-size: 12px; color: #888; }
+
+        .price-box { background: #e3f2fd; padding: 16px; border-radius: 10px; margin: 16px 0; }
+        .price-main { font-size: 28px; font-weight: 700; color: #1565C0; }
+        .price-main span { font-size: 16px; color: #666; font-weight: 400; }
+        .price-options { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+        .price-opt { background: white; padding: 10px 16px; border-radius: 8px; flex: 1; min-width: 120px; text-align: center; }
+        .price-opt .val { font-size: 18px; font-weight: 700; color: #1565C0; }
+        .price-opt .lbl { font-size: 12px; color: #666; }
+
+        .tags { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+        .tag { background: #e3f2fd; color: #1565C0; padding: 4px 14px; border-radius: 16px; font-size: 13px; }
+        .tag.green { background: #e8f5e9; color: #2e7d32; }
+        .tag.orange { background: #fff3e0; color: #e65100; }
+
+        .desc { line-height: 1.8; color: #444; margin: 16px 0; white-space: pre-line; }
+
+        .booking-section { background: #f8f9fa; border-radius: 10px; padding: 20px; margin: 16px 0; }
+        .booking-section h3 { margin-bottom: 12px; }
+        .booking-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; gap: 8px; }
+        .booking-row:last-child { border: none; }
+        .booking-row .label { font-weight: 600; flex: 1; }
+        .booking-row .price { color: #1565C0; font-weight: 700; margin-left: auto; }
+        .booking-row .avail { font-size: 13px; color: #2e7d32; }
+        .btn-reserve { background: #1565C0; color: white; border: none; border-radius: 6px; padding: 4px 14px; font-family: 'Cairo', sans-serif; font-size: 13px; cursor: pointer; white-space: nowrap; }
+        .btn-reserve:hover { background: #0D47A1; }
+        .reserve-select { padding: 4px 6px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Cairo', sans-serif; font-size: 13px; width: 60px; text-align: center; }
+
+        .btn-book { width: 100%; padding: 14px; background: #1565C0; color: white; border: none; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 16px; }
+        .btn-book:hover { background: #0D47A1; }
+
+        .loading { text-align: center; padding: 80px 20px; color: #666; font-size: 16px; }
+
+        .toast-container { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; }
+        .toast-wrap { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .toast { padding: 12px 24px; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); opacity: 0; transform: translateY(-20px); transition: all 0.3s; pointer-events: auto; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .toast-error { background: #ffebee; color: #d32f2f; border: 1px solid #ef9a9a; }
+        .toast-info { background: #e3f2fd; color: #1565C0; border: 1px solid #90caf9; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.show { display: flex; }
+        .modal-box { background: white; border-radius: 16px; max-width: 480px; width: 90%; padding: 0; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 0; }
+        .modal-header h3 { font-size: 20px; }
+        .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #888; padding: 4px 8px; border-radius: 6px; }
+        .modal-close:hover { background: #f0f0f0; }
+        .modal-body { padding: 20px 24px 24px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+        .form-input { width: 100%; padding: 12px 14px; border: 2px solid #ddd; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 15px; box-sizing: border-box; }
+        .form-input:focus { outline: none; border-color: #1565C0; }
+        .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+        .modal-actions .btn { flex: 1; padding: 14px; border: none; border-radius: 10px; font-family: 'Cairo', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .btn-primary { background: #1565C0; color: white; }
+        .btn-primary:hover { background: #0D47A1; }
+        .btn-secondary { background: #f0f0f0; color: #333; }
+        .btn-secondary:hover { background: #e0e0e0; }
+
+        @media (max-width: 600px) {
+            .container { padding: 12px; }
+            .detail-card { padding: 16px; }
+            .specs { gap: 12px; }
+            .price-main { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+    <script src="/sidebar.js"></script>
+    <div class="topbar">
+        <div style="display:flex;align-items:center;">
+            <button class="hamburger" onclick="toggleSidebar()">☰</button>
+            <h1 onclick="location.href='/dashboard.html'">سكنكم</h1>
+        </div>
+        <a href="/dashboard.html" class="back-btn">← العودة</a>
+    </div>
+
+    <div class="container">
+        <div id="content" class="loading">جاري تحميل تفاصيل الشقة...</div>
+    </div>
+
+    <div id="bookingModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>📋 تأكيد الحجز</h3>
+                <button class="modal-close" onclick="closeBookingModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:16px;color:#555;">أدخل بياناتك للتواصل معك بخصوص الحجز</p>
+                <div class="form-group">
+                    <label>الاسم بالعربية</label>
+                    <input type="text" id="requesterName" placeholder="مثال: أحمد محمد" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>رقم واتساب</label>
+                    <input type="tel" id="whatsapp" placeholder="مثال: 01012345678" class="form-input">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary btn-lg" onclick="confirmBooking()">✔ تأكيد الحجز</button>
+                    <button class="btn btn-secondary btn-lg" onclick="closeBookingModal()">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="galleryOverlay" class="gallery-overlay">
+        <button class="close-btn" onclick="closeGallery()">✕</button>
+        <button class="nav-btn" id="galleryPrev" style="right:20px;" onclick="galleryNav(-1)">❮</button>
+        <img id="galleryImage" src="" alt="">
+        <button class="nav-btn" id="galleryNext" style="left:20px;" onclick="galleryNav(1)">❯</button>
+        <div class="counter" id="galleryCounter"></div>
+    </div>
+
+    <script>
+        const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://localhost:3000/api'
+          : '/api';
+        const params = new URLSearchParams(window.location.search);
+        const aptId = params.get('id');
+
+        let pendingBooking = null;
+        let currentApartment = null;
+        let galleryImages = [];
+        let galleryIndex = 0;
+
+        function openGallery(images, idx) {
+            galleryImages = images;
+            galleryIndex = idx;
+            updateGallery();
+            document.getElementById('galleryOverlay').classList.add('show');
+        }
+        function closeGallery() {
+            document.getElementById('galleryOverlay').classList.remove('show');
+        }
+        function galleryNav(dir) {
+            galleryIndex = (galleryIndex + dir + galleryImages.length) % galleryImages.length;
+            updateGallery();
+        }
+        function updateGallery() {
+            const img = document.getElementById('galleryImage');
+            img.src = galleryImages[galleryIndex];
+            document.getElementById('galleryCounter').textContent = (galleryIndex + 1) + ' / ' + galleryImages.length;
+            document.getElementById('galleryPrev').style.display = galleryImages.length > 1 ? '' : 'none';
+            document.getElementById('galleryNext').style.display = galleryImages.length > 1 ? '' : 'none';
+        }
+        document.addEventListener('keydown', function(e) {
+            if (!document.getElementById('galleryOverlay').classList.contains('show')) return;
+            if (e.key === 'Escape') closeGallery();
+            if (e.key === 'ArrowLeft') galleryNav(-1);
+            if (e.key === 'ArrowRight') galleryNav(1);
+        });
+
+        async function api(path, opts = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            const res = await fetch(`${API}${path}`, { ...opts, headers });
+            return res.json();
+        }
+
+        function showBookingModal(bookingData) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                if (confirm('يجب تسجيل الدخول أولاً. هل تريد الانتقال إلى صفحة تسجيل الدخول؟')) {
+                    location.href = '/dashboard.html';
+                }
+                return;
+            }
+            pendingBooking = bookingData;
+            document.getElementById('requesterName').value = '';
+            document.getElementById('whatsapp').value = '';
+            document.getElementById('bookingModal').classList.add('show');
+        }
+
+        function closeBookingModal() {
+            document.getElementById('bookingModal').classList.remove('show');
+            pendingBooking = null;
+        }
+
+        async function confirmBooking() {
+            const name = document.getElementById('requesterName').value.trim();
+            const whatsapp = document.getElementById('whatsapp').value.trim();
+            if (!name) {
+                document.getElementById('requesterName').focus();
+                document.getElementById('requesterName').style.borderColor = '#d32f2f';
+                return;
+            }
+            if (!whatsapp) {
+                document.getElementById('whatsapp').focus();
+                document.getElementById('whatsapp').style.borderColor = '#d32f2f';
+                return;
+            }
+            const token = localStorage.getItem('token');
+            const body = { ...pendingBooking, requesterName: name, whatsapp };
+            try {
+                const res = await fetch(`${API}/bookings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                closeBookingModal();
+                if (data.booking) {
+                    showToast('✅ سنتواصل معك لإتمام الحجز', 'success');
+                } else {
+                    showToast('❌ ' + (data.message || 'فشل الحجز'), 'error');
+                }
+            } catch (e) {
+                closeBookingModal();
+                showToast('❌ فشل الاتصال بالخادم', 'error');
+            }
+        }
+
+        function reserve(type, apartmentId, roomIdx) {
+            const a = currentApartment;
+            const bookingData = { apartmentId, type, message: '', roomIdx };
+            if (type === 'room') {
+                bookingData.message = 'حجز غرفة ' + (roomIdx + 1);
+                bookingData.roomIdx = roomIdx;
+            } else if (type === 'bed') {
+                const count = document.getElementById('bedCount').value;
+                bookingData.message = 'حجز ' + count + ' أسرة';
+                bookingData.bedCount = parseInt(count);
+            } else if (type === 'full') {
+                bookingData.message = 'حجز الشقة كاملة';
+            } else if (type === 'viewing') {
+                bookingData.message = 'طلب معاينة';
+                bookingData.type = 'viewing';
+            }
+            showBookingModal(bookingData);
+        }
+
+        async function loadApartment() {
+            const el = document.getElementById('content');
+            if (!aptId) {
+                el.innerHTML = '<div style="text-align:center;padding:40px;">❌ لم يتم تحديد الشقة<br><br><a href="/dashboard.html" style="color:#1565C0;">العودة للرئيسية</a></div>';
+                return;
+            }
+            try {
+                const data = await api(`/apartments/${aptId}`);
+                const a = data.apartment;
+                currentApartment = a;
+                if (!a) {
+                    currentApartment = null;
+                    el.innerHTML = '<div style="text-align:center;padding:40px;">❌ الشقة غير موجودة<br><br><a href="/dashboard.html" style="color:#1565C0;">العودة للرئيسية</a></div>';
+                    return;
+                }
+
+            document.title = `${a.title} - سكنكم`;
+
+            const imgs = a.images && a.images.length
+                ? a.images.map((img, i) => `<img src="${img}" alt="${a.title}" onclick="openGallery(${JSON.stringify(a.images).replace(/"/g,'&quot;')}, ${i})" style="cursor:pointer;">`).join('')
+                : '<div class="placeholder">🏠</div>';
+
+            el.innerHTML = `
+                <div class="gallery">${imgs}</div>
+
+                <div class="detail-card">
+                    <h2>${a.title}</h2>
+                    <div class="location">📍 ${a.district} - ${a.location}</div>
+
+                    <div class="tags">
+                        ${a.furnished ? '<span class="tag green">مفروش بالكامل</span>' : ''}
+                        ${a.gender === 'male' ? '<span class="tag orange">للطلاب</span>' : ''}
+                        ${a.gender === 'female' ? '<span class="tag orange">للطالبات</span>' : ''}
+                        ${a.gender === 'any' ? '<span class="tag">للجميع</span>' : ''}
+                        ${a.allowRoomBooking ? '<span class="tag">حجز غرفة</span>' : ''}
+                        ${a.allowBedBooking ? '<span class="tag">حجز سرير</span>' : ''}
+                    </div>
+
+                    <div class="specs">
+                        <div class="spec-item">
+                            <div class="icon">🚪</div>
+                            <div class="value">${a.totalRooms}</div>
+                            <div class="label">غرف</div>
+                        </div>
+                        <div class="spec-item">
+                            <div class="icon">🛏️</div>
+                            <div class="value">${a.totalBeds}</div>
+                            <div class="label">أسرة</div>
+                        </div>
+                        <div class="spec-item">
+                            <div class="icon">🛌</div>
+                            <div class="value">${a.bedrooms}</div>
+                            <div class="label">غرف نوم</div>
+                        </div>
+                        <div class="spec-item">
+                            <div class="icon">🚿</div>
+                            <div class="value">${a.bathrooms}</div>
+                            <div class="label">حمامات</div>
+                        </div>
+                    </div>
+
+                    <div class="price-box">
+                        <div class="price-main">${Number(a.price).toLocaleString()} <span>ج.م / شهرياً</span></div>
+                        <div class="price-options">
+                            ${a.allowRoomBooking && a.pricePerRoom ? `
+                            <div class="price-opt">
+                                <div class="val">${Number(a.pricePerRoom).toLocaleString()} ج.م</div>
+                                <div class="lbl">غرفة</div>
+                            </div>` : ''}
+                            ${a.allowBedBooking && a.pricePerBed ? `
+                            <div class="price-opt">
+                                <div class="val">${Number(a.pricePerBed).toLocaleString()} ج.م</div>
+                                <div class="lbl">سرير</div>
+                            </div>` : ''}
+                            <div class="price-opt">
+                                <div class="val" style="color:green;">مجاناً</div>
+                                <div class="lbl">معاينة</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="booking-section">
+                        <h3>🧾 خيارات الحجز</h3>
+                        <div class="booking-row">
+                            <span class="label">🏠 الشقة كاملة</span>
+                            <span class="price">${Number(a.price).toLocaleString()} ج.م</span>
+                            <button class="btn-reserve" onclick="reserve('full', '${a.id}')">حجز</button>
+                        </div>
+                        ${a.roomConfig && a.roomConfig.length ? a.roomConfig.map((beds, idx) => `
+                        <div class="booking-row">
+                            <span class="label">🚪 غرفة ${idx + 1} <span style="font-size:12px;color:#888;">(${beds} سرير)</span></span>
+                            <span class="price">${Number(a.pricePerRoom).toLocaleString()} ج.م</span>
+                            <button class="btn-reserve" onclick="reserve('room', '${a.id}', ${idx})">حجز</button>
+                        </div>`).join('') : ''}
+                        ${a.allowBedBooking && a.pricePerBed ? `
+                        <div class="booking-row">
+                            <span class="label">🛏️ سرير</span>
+                            <span class="price">${Number(a.pricePerBed).toLocaleString()} ج.م</span>
+                            <span style="font-size:12px;color:#2e7d32;white-space:nowrap;">متبقي ${a.availableBeds}</span>
+                            <select class="reserve-select" id="bedCount">
+                                ${Array.from({length: a.totalBeds + 1}, (_, i) => `<option value="${i}">${i}</option>`).join('')}
+                            </select>
+                            <button class="btn-reserve" onclick="reserve('bed', '${a.id}')">حجز</button>
+                        </div>` : ''}
+                        <div class="booking-row">
+                            <span class="label">👁️ طلب معاينة</span>
+                            <span class="price" style="color:green;">مجاناً</span>
+                            <button class="btn-reserve" onclick="reserve('viewing', '${a.id}')">طلب</button>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top:20px;">📋 الوصف</h3>
+                    <div class="desc">${a.description}</div>
+
+                    <div style="display:flex;gap:10px;margin-top:16px;">
+                        <button class="btn-book" style="margin-top:0;flex:3;" onclick="reserve('full', '${a.id}')">📞 تواصل للحجز</button>
+                        const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                          ? 'http://localhost:3000'
+                          : window.location.origin;
+                        <button class="btn-book" style="margin-top:0;flex:1;background:#25D366;font-size:22px;" onclick="window.open('https://wa.me/?text='+encodeURIComponent('🏠 ${a.title}%0A📍 ${a.district} - ${a.location}%0A💰 ${Number(a.price).toLocaleString()} ج.م/شهرياً%0A🚪 ${a.totalRooms} غرفة · 🛏 ${a.totalBeds} سرير%0A🔗 ${BASE}/apartment.html?id=${a.id}'),'_blank')" title="مشاركة عبر واتساب">📤</button>
+                    </div>
+                </div>
+            `;
+            } catch (e) {
+                el.innerHTML = '<div style="text-align:center;padding:40px;">❌ فشل تحميل البيانات - تأكد من تشغيل السيرفر<br><br><a href="/dashboard.html" style="color:#1565C0;">العودة للرئيسية</a></div>';
+            }
+        }
+
+        document.getElementById('bookingModal').addEventListener('click', function(e) {
+            if (e.target === this) closeBookingModal();
+        });
+
+        initSidebar();
+        loadApartment();
+    </script>
+</body>
+</html>

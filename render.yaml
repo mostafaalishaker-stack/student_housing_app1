@@ -1,0 +1,32 @@
+databases:
+  - name: sknkm-db
+    region: frankfurt
+    plan: free
+    postgresMajorVersion: 16
+
+services:
+  - type: web
+    name: sknkm-api
+    env: node
+    region: frankfurt
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sknkm-db
+          property: connectionString
+      - key: GOOGLE_CLIENT_ID
+        value: 196449063436-0l9j1q6a7rrlb7gogoht91sc67epes30.apps.googleusercontent.com
+      - key: WHATSAPP_INSTANCE_ID
+        value: instance181067
+      - key: WHATSAPP_TOKEN
+        value: 8227s7j7nvk4dull
+      - key: ADMIN_WHATSAPP
+        value: 201112291736
+      - key: CORS_ORIGIN
+        value: https://sknkm-api.onrender.com,http://localhost:3000
